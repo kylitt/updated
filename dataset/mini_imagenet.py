@@ -8,8 +8,7 @@ import torchvision.transforms as transforms
 
 
 class ImageNet(Dataset):
-    def __init__(self, args, partition='train', pretrain=True, is_sample=False, k=4096,
-                 transform=None):
+    def __init__(self, args, partition='train', pretrain=True, is_sample=False, k=4096):
         super(Dataset, self).__init__()
         self.data_root = args.data_root
         self.partition = partition
@@ -18,26 +17,23 @@ class ImageNet(Dataset):
         self.std = [70.68188272 / 255.0, 68.27635443 / 255.0, 72.54505529 / 255.0]
         self.normalize = transforms.Normalize(mean=self.mean, std=self.std)
         self.pretrain = pretrain
-
-        if transform is None:
-            if self.partition == 'train' and self.data_aug:
-                self.transform = transforms.Compose([
-                    lambda x: Image.fromarray(x),
-                    transforms.RandomCrop(84, padding=8),
-                    transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-                    transforms.RandomHorizontalFlip(),
-                    lambda x: np.asarray(x),
-                    transforms.ToTensor(),
-                    self.normalize
-                ])
-            else:
-                self.transform = transforms.Compose([
-                    lambda x: Image.fromarray(x),
-                    transforms.ToTensor(),
-                    self.normalize
-                ])
+        
+        if self.partition == 'train' and self.data_aug:
+            self.transform = transforms.Compose([
+                lambda x: Image.fromarray(x),
+                transforms.RandomCrop(84, padding=8),
+                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
+                transforms.RandomHorizontalFlip(),
+                lambda x: np.copy(x),
+                transforms.ToTensor(),
+                self.normalize
+            ])
         else:
-            self.transform = transform
+            self.transform = transforms.Compose([
+                lambda x: Image.fromarray(x),
+                transforms.ToTensor(),
+                self.normalize
+            ])
 
         if self.pretrain:
             self.file_pattern = 'miniImageNet_category_split_train_phase_%s.pickle'           
@@ -93,36 +89,30 @@ class ImageNet(Dataset):
 
 class MetaImageNet(ImageNet):
     
-    def __init__(self, args, partition='train', train_transform=None, test_transform=None, fix_seed=True):
+    def __init__(self, args, partition='train', fix_seed=True):
         super(MetaImageNet, self).__init__(args, partition, False)
         self.fix_seed = fix_seed
-        self.n_ways = args.n_ways
-        self.n_shots = args.n_shots
-        self.n_queries = args.n_queries
+        self.n_ways = 5
+        self.n_shots = 1
+        self.n_queries = 15
         self.classes = list(self.data.keys())
         self.n_test_runs = args.n_test_runs
-        self.n_aug_support_samples = args.n_aug_support_samples
-        if train_transform is None:
-            self.train_transform = transforms.Compose([
-                    lambda x: Image.fromarray(x),
-                    transforms.RandomCrop(84, padding=8),
-                    transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-                    transforms.RandomHorizontalFlip(),
-                    lambda x: np.asarray(x),
-                    transforms.ToTensor(),
-                    self.normalize
-                ])
-        else:
-            self.train_transform = train_transform
+        self.n_aug_support_samples = 5
+        self.train_transform = transforms.Compose([
+                lambda x: Image.fromarray(x),
+                transforms.RandomCrop(84, padding=8),
+                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
+                transforms.RandomHorizontalFlip(),
+                lambda x: np.copy(x),
+                transforms.ToTensor(),
+                self.normalize
+            ])
 
-        if test_transform is None:
-            self.test_transform = transforms.Compose([
-                    lambda x: Image.fromarray(x),
-                    transforms.ToTensor(),
-                    self.normalize
-                ])
-        else:
-            self.test_transform = test_transform
+        self.test_transform = transforms.Compose([
+                lambda x: Image.fromarray(x),
+                transforms.ToTensor(),
+                self.normalize
+            ])
 
         self.data = {}
         for idx in range(self.imgs.shape[0]):
