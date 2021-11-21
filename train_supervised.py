@@ -71,15 +71,15 @@ def main():
     opt = parse_option()
 
     # dataloader
-    train_partition = 'train'
-    train_loader = DataLoader(ImageNet(args=opt, partition=train_partition),
+    train_loader = DataLoader(ImageNet(args=opt, partition='train'),
                                 batch_size=opt.batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(ImageNet(args=opt, partition='val'),
                             batch_size=opt.batch_size // 2, shuffle=False, drop_last=False)
     n_cls = 64
 
     # model
-    model = create_model(n_cls)
+    #model = create_model(n_cls)
+    model = torch.hub.load('pytorch/vision:v0.10.0','resnet18', pretrained = False,num_classes=n_cls)
 
     optimizer = optim.SGD(model.parameters(),
                               lr=opt.learning_rate,
@@ -133,6 +133,7 @@ def main():
 
 def train(epoch, train_loader, model, criterion, optimizer, opt):
     """One epoch training"""
+    # turn the model on to train
     model.train()
 
     batch_time = AverageMeter()

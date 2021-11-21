@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 
 
 class ImageNet(Dataset):
-    def __init__(self, args, partition='train', pretrain=True, is_sample=False, k=4096):
+    def __init__(self, args, partition='train', pretrain=True): #, is_sample=False, k=4096
         super(Dataset, self).__init__()
         self.data_root = args.data_root
         self.partition = partition
@@ -45,43 +45,45 @@ class ImageNet(Dataset):
             self.imgs = data['data']
             self.labels = data['labels']
 
-        # pre-process for contrastive sampling
-        self.k = k
-        self.is_sample = is_sample
-        if self.is_sample:
-            self.labels = np.asarray(self.labels)
-            self.labels = self.labels - np.min(self.labels)
-            num_classes = np.max(self.labels) + 1
+        # # pre-process for contrastive sampling
+        # self.k = k
+        # self.is_sample = is_sample
+        # if self.is_sample:
+        #     self.labels = np.asarray(self.labels)
+        #     self.labels = self.labels - np.min(self.labels)
+        #     num_classes = np.max(self.labels) + 1
 
-            self.cls_positive = [[] for _ in range(num_classes)]
-            for i in range(len(self.imgs)):
-                self.cls_positive[self.labels[i]].append(i)
+        #     self.cls_positive = [[] for _ in range(num_classes)]
+        #     for i in range(len(self.imgs)):
+        #         self.cls_positive[self.labels[i]].append(i)
 
-            self.cls_negative = [[] for _ in range(num_classes)]
-            for i in range(num_classes):
-                for j in range(num_classes):
-                    if j == i:
-                        continue
-                    self.cls_negative[i].extend(self.cls_positive[j])
+        #     self.cls_negative = [[] for _ in range(num_classes)]
+        #     for i in range(num_classes):
+        #         for j in range(num_classes):
+        #             if j == i:
+        #                 continue
+        #             self.cls_negative[i].extend(self.cls_positive[j])
 
-            self.cls_positive = [np.asarray(self.cls_positive[i]) for i in range(num_classes)]
-            self.cls_negative = [np.asarray(self.cls_negative[i]) for i in range(num_classes)]
-            self.cls_positive = np.asarray(self.cls_positive)
-            self.cls_negative = np.asarray(self.cls_negative)
+        #     self.cls_positive = [np.asarray(self.cls_positive[i]) for i in range(num_classes)]
+        #     self.cls_negative = [np.asarray(self.cls_negative[i]) for i in range(num_classes)]
+        #     self.cls_positive = np.asarray(self.cls_positive)
+        #     self.cls_negative = np.asarray(self.cls_negative)
 
     def __getitem__(self, item):
         img = np.asarray(self.imgs[item]).astype('uint8')
         img = self.transform(img)
+        
+        # ensure zero indexing
         target = self.labels[item] - min(self.labels)
-
-        if not self.is_sample:
-            return img, target, item
-        else:
-            pos_idx = item
-            replace = True if self.k > len(self.cls_negative[target]) else False
-            neg_idx = np.random.choice(self.cls_negative[target], self.k, replace=replace)
-            sample_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
-            return img, target, item, sample_idx
+        return img, target, item
+        #if not self.is_sample:
+            
+        # else:
+        #     pos_idx = item
+        #     replace = True if self.k > len(self.cls_negative[target]) else False
+        #     neg_idx = np.random.choice(self.cls_negative[target], self.k, replace=replace)
+        #     sample_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
+        #     return img, target, item, sample_idx
         
     def __len__(self):
         return len(self.labels)
@@ -138,8 +140,12 @@ class MetaImageNet(ImageNet):
             query_xs_ids = np.random.choice(query_xs_ids, self.n_queries, False)
             query_xs.append(imgs[query_xs_ids])
             query_ys.append([idx] * query_xs_ids.shape[0])
+        
+        # make sure they are numpy arrays
         support_xs, support_ys, query_xs, query_ys = np.array(support_xs), np.array(support_ys), np.array(
             query_xs), np.array(query_ys)
+            
+        # get query shape    
         num_ways, n_queries_per_way, height, width, channel = query_xs.shape
         query_xs = query_xs.reshape((num_ways * n_queries_per_way, height, width, channel))
         query_ys = query_ys.reshape((num_ways * n_queries_per_way, ))

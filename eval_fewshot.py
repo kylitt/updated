@@ -1,18 +1,12 @@
 from __future__ import print_function
-
 import argparse
 import time
-
 import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
-
 from models.util import create_model
-
 from dataset.mini_imagenet import MetaImageNet
-
 from eval.meta_eval import meta_test
-
 
 def parse_option():
 
@@ -55,7 +49,8 @@ def main():
     n_cls = 64
 
     # load model
-    model = create_model(n_cls)
+    # model = create_model(n_cls)
+    model = torch.hub.load('pytorch/vision:v0.10.0','resnet18', pretrained = False,num_classes = n_cls)
     ckpt = torch.load(opt.model_path)
     model.load_state_dict(ckpt['model'])
 
@@ -69,20 +64,20 @@ def main():
     val_time = time.time() - start
     print('val_acc: {:.4f}, val_std: {:.4f}, time: {:.1f}'.format(val_acc, val_std, val_time))
 
-    start = time.time()
-    val_acc_feat, val_std_feat = meta_test(model, meta_valloader, use_logit=False)
-    val_time = time.time() - start
-    print('val_acc_feat: {:.4f}, val_std: {:.4f}, time: {:.1f}'.format(val_acc_feat, val_std_feat, val_time))
+    # start = time.time()
+    # val_acc_feat, val_std_feat = meta_test(model, meta_valloader, use_logit=False)
+    # val_time = time.time() - start
+    # print('val_acc_feat: {:.4f}, val_std: {:.4f}, time: {:.1f}'.format(val_acc_feat, val_std_feat, val_time))
 
     start = time.time()
     test_acc, test_std = meta_test(model, meta_testloader)
     test_time = time.time() - start
     print('test_acc: {:.4f}, test_std: {:.4f}, time: {:.1f}'.format(test_acc, test_std, test_time))
 
-    start = time.time()
-    test_acc_feat, test_std_feat = meta_test(model, meta_testloader, use_logit=False)
-    test_time = time.time() - start
-    print('test_acc_feat: {:.4f}, test_std: {:.4f}, time: {:.1f}'.format(test_acc_feat, test_std_feat, test_time))
+    # start = time.time()
+    # test_acc_feat, test_std_feat = meta_test(model, meta_testloader, use_logit=False)
+    # test_time = time.time() - start
+    # print('test_acc_feat: {:.4f}, test_std: {:.4f}, time: {:.1f}'.format(test_acc_feat, test_std_feat, test_time))
 
 
 if __name__ == '__main__':
